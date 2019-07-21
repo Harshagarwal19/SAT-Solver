@@ -1,426 +1,195 @@
 #include<bits/stdc++.h>
-#include <iomanip>
 #include <fstream>
-
 using namespace std;
 
-void rmv(vector< vector <int> > &var , vector <int> &s)
-{
-
-  for(int t=0;t<var.size();t++)
-  {
-      int flag=0;
-      if(var[t].size()==2)
-      {
-          flag=1;
-          int value=var[t][0];
-          s.push_back(value);
-          for(int i1=0;i1<var.size();i1++)
-          {
-              for(int j=0;i1<var.size() && j<var[i1].size();j++)
-              {
-                  if(var[i1][j]==value)
-                  {
-                      //cout<<"ERASE"<<endl;
-                      var.erase(var.begin()+i1);
-                      //i1=i1-1;
-                      j=-1;
-                      continue;
-                  }
-                  if(var[i1][j]== -1*value)
-                  {
-                      var[i1].erase(var[i1].begin()+j);
-                      j=j-1;
-                  }
-              }
-          }
-      }
-      if(flag==1)
-        t=-1;
-  }
-
-}
-
-
-
-int check_contradiction(vector<vector<int>> &var)
-{
-    int contra=0;
-        for(int i1=0;i1<var.size();i1++)                 //checking contradiction
-        {
-	    //cout<<var[i1].size()<<" size of rows"<<endl;
-            if(var[i1].size()==1)
-            {
-              //cout<<"Again contradiction"<<endl;
-                contra=1;
-                break;
-            }
-        }
-    if(contra==1)
-        return 1;
-    else
-        return 0;
-}
-
-
-int rec(vector <vector<int > > &var,vector<vector < vector <int> > > &p_var,vector<int> &count_stack,int value,int i,vector<int> &s1,vector<int> &index,vector<int> &length)
-{
-  int count=1;
-    if(length.size()!=0)
+void print_clauses(vector<set<int>>&clauses){
+    int rows = clauses.size();
+    cout<<"##START##"<<endl;
+    for(int i=0;i<rows;i++)
     {
-        int rows = var.size();
-        vector <vector <int> > cvar(rows);
-        for(int i1=0;i1<var.size();i1++)
+        for (auto it=clauses[i].begin(); it != clauses[i].end(); ++it) 
         {
-            for(int j=0;j<var[i1].size();j++)
-            {
-                cvar[i1].push_back(var[i1][j]);
-            }
+            cout<<*it<<" ";
         }
-        
+        cout<<endl;
+    }
+    cout<<"##END##"<<endl;
+    return;
+}
+void print_assignmnet(vector<int> &assignment){
+    for(int i=0;i<assignment.size();i++)
+        cout<<assignment[i]<<" ";
+    cout<<endl;
+}
 
+int check_empty_clause(vector<set<int>> &clauses){
+    int rows = clauses.size();
+    for(int i=0;i<rows;i++)
+    {
+        if(clauses[i].size()==0)
+            return 1;
+    }
+    return 0;
+}
 
-        if(value==0)
-        {
-          return 0;
+void remove_new_p(vector<set<int>>&clauses, vector<int> &assignment){
+    int new_p = assignment.back();
+    for(int i=0;i<clauses.size();i++)
+    {
+        if(clauses[i].find(new_p) != clauses[i].end()){
+            clauses.erase(clauses.begin()+i);
+            i--;
         }
-        
-        
-        int contra=0;
-     
-        for(int i1=0;i1<var.size();i1++)
-        {
-   
-            for(int j=0;i1<var.size() && j<var[i1].size();j++)
-            {
-            
-                if(var[i1][j]==value)
-                {
+        else if(clauses[i].find(-1*new_p)!=clauses[i].end()){
+            clauses[i].erase(clauses[i].find(-1*new_p));
+        }
+    }
+    return;
+}
 
-                 
-                    var.erase(var.begin()+i1);
-                                       //i=i-1;   //check this after wards
-                    j=-1;
-                    continue;
-                }
-
-                if(var[i1][j]== -1*value)
-                {
-                    var[i1].erase(var[i1].begin()+j);
-                    j=j-1;
-                }
-            }
-        }
-        //check for contradiction
-        if(check_contradiction(var)){
-            contra =1;
-        }
-        else
-        {
-            contra = 0;
-        }
-        
-        
-        //check for more elements to be added in the stack
-        if(contra==0){
-                for(int t=0;t<var.size();t++)
-                {
-                    int flag=0;
-                    if(var[t].size()==2)
-                    {
-                      count++;
-                      flag=1;
-                      int value=var[t][0];
-                      s1.push_back(value);
-
-                      for(int i1=0;i1<var.size();i1++)
-                      {
-                          for(int j=0;i1<var.size() && j<var[i1].size();j++)
-                          {
-                              if(var[i1][j]==value)
-                              {
-                                  //cout<<"ERASE"<<endl;
-                                  var.erase(var.begin()+i1);
-                                  //i1=i1-1;
-                                  j=-1;
-                                  continue;
-                              }
-                              if(var[i1][j]== -1*value)
-                              {
-                                  var[i1].erase(var[i1].begin()+j);
-                                  j=j-1;
-                              }
-                          }
-                      }
-                    }
-                    else if(var[t].size()==1)
-                    {
-                        contra=1;
-                        break;
-                    }
-              if(flag==1)
-                t=-1;
-          }
-        }
-     
-       
-        for(int i1=0;i1<var.size();i1++)                 //checking contradiction
-        {
-            if(var[i1].size()==1)
-            {
-              //cout<<"Again contradiction"<<endl;
-                contra=1;
+void unit_prop(vector<set<int>> &clauses,vector<int> &assignment){
+    int flag=1;
+    while(flag==1){
+        flag=0;
+        int rows = clauses.size();
+        for(int i=0;i<rows;i++){
+            if(clauses[i].size()==1){
+                flag=1;
+                set<int>::iterator it = clauses[i].begin();
+                clauses.erase(clauses.begin()+i);
+                assignment.push_back(*it);
+                remove_new_p(clauses,assignment);
                 break;
             }
         }
-        
-        
-        
-        //SAT condition
-        if(var.size()==0)
-        {
-            return 1;
-        }
-   
-
-        if(contra==1)                       //check
-        {
-            
-            int l=length.back();
-            if(i<(l-2)){
-
-                  int in = index.back();
-                  index.pop_back();
-                  index.push_back(in+1);
-                  int value1 = cvar[0][i+1];
-                  for(int i3=0;i3<count;i3++){
-                    s1.pop_back();
-                  }
-                  s1.push_back(value1);
-                  if(rec(cvar,p_var,count_stack,value1,i+1,s1,index,length))
-                    return 1;
-                  else
-                    return 0;
-              }
-            else
-            {
-                
-                int flag=0;
-                for(int i3=0;i3<count;i3++)
-                        s1.pop_back();
-
-                while(flag==0)
-                {
-                    length.pop_back();
-                    index.pop_back();
-                    
-                    
-                    count = count_stack.back();
-                    count_stack.pop_back();
-                    for(int i3=0;i3<count;i3++)
-                        s1.pop_back();
-
-                    int i_new=index.back();
-                    
-
-                    int len = length.back();
-
-                    if(i_new<(len-2)){
-                          
-                          vector<vector<int> > pvar = p_var.back();
-      			              p_var.pop_back();
-                          
-                          
-                          int value1 =pvar[0][i_new+1];
-                          flag=1;
-                          s1.push_back(value1);
-                          index.pop_back();
-                          index.push_back(i_new+1);
-                          if(rec(pvar,p_var,count_stack,value1,i_new+1,s1,index,length))
-                            return 1;
-                            else
-                            return 0;
-                          
-
-                    }
-                    else
-                    {
-                        if(p_var.size()!=0){
-                            p_var.pop_back();
-                          }
-                        else{
-                            return 0;
-                        }
-
-                    }
-                }
-
-
-        }
-      }
-
-        else
-        {
-            p_var.push_back(cvar);
-            count_stack.push_back(count);
-            int l=var[0].size();
-            length.push_back(l);
-            index.push_back(0);
-            value = var[0][0];
-            s1.push_back(value);
-            if(rec(var,p_var,count_stack,value,0,s1,index,length))
-              return 1;
-            else
-              return 0;
-        }
-
-
-
-
-
     }
-    else
-        return 0;
+    return;
+}
 
+void pure_literal_assign(vector<set<int>> &clauses, vector<int> &assignment, int literals){
+    vector<int> check(literals+1, 0);
+    int curr_rows = clauses.size();
+    for(int i=0;i<curr_rows;i++)
+    {
+        for (auto it=clauses[i].begin(); it != clauses[i].end(); ++it) 
+        {
+            int val = *it;
+            if(val<0){
+                if(check[-1*val]==1)
+                    check[-1*val]=2;
+                else if(check[-1*val]==0)
+                    check[-1*val]=-1;
+                else if(check[-1*val]==2)
+                    check[-1*val]=2;
+            }
+            else{
+                if(check[val]==-1)
+                    check[val]=2;
+                else if(check[val]==0)
+                    check[val]=1;
+                else if(check[val]==2)
+                    check[val]=2;
+            }
+        }
+    }
+    for(int i=1;i<=literals;i++)
+    {
+        if(check[i]==1 || check[i]==-1){
+            assignment.push_back(check[i]*i);
+            remove_new_p(clauses,assignment);
+        }
+    }
+    return;
+}
+
+void print_ans(vector<int> &assignment, int literals){
+    int size = assignment.size();
+    vector<int> solution(literals+1,1);
+    for(int i=0;i<size;i++)
+    {
+        int val = assignment[i];
+        if(val<0)
+        {
+            solution[val*-1]=-1;
+        }
+    }
+    for(int i=1;i<=literals;i++)
+    {
+        cout<<i*solution[i]<<" ";
+    }
+    cout<<endl;
+    return;
 }
 
 
 
-
-
-
+bool DPLL_algo(vector<set<int>>clauses,vector<int> assignment,int new_p, int literals){
+    
+    assignment.push_back(new_p);
+    remove_new_p(clauses,assignment);
+    unit_prop(clauses,assignment);
+    pure_literal_assign(clauses,assignment,literals);
+    if(clauses.size()==0){
+        print_ans(assignment,literals);
+        return true;
+    }
+    if(check_empty_clause(clauses)==1){
+        return false;
+    }
+    int  newp = *(clauses[0].begin());
+    return DPLL_algo(clauses, assignment,newp, literals) || DPLL_algo(clauses,assignment,-1*newp,literals);
+}
 
 
 int main()
 {
-
-
-
-
     ifstream inFile;
-    string p1;
-    char p,pre;
-    int number;
+    string v,v1;
     string name;
     cout<<"Enter name of file: "<<endl;
     cin>>name;
     inFile.open(name);
-    inFile >>pre;
-    //cout<<pre<<endl;
-    if(pre == 'p')
-      cout<<"";
-    else
-    {
-      inFile >> p;
-      while(p != 'p' && pre != '\n')
-      {
-        pre=p;
-        inFile>>p;
-      }
+    inFile>>v;
+    inFile>>v1;
+    while(v!="p" || v1!="cnf"){
+        v=v1;
+        inFile>>v1;
     }
-    inFile>>p1;
-    int variables,rows;
-    if(1)
-    {
-        inFile>>variables;
-        inFile>>rows;
-
-    }
-    cout<<"No of variables "<<variables<<endl;
+    int literals;
+    int rows;
+    inFile>> literals;
+    inFile>>rows;
+    cout<<"No of literals "<<literals<<endl;
     cout<<"No of rows "<<rows<<endl;
-
-    vector <vector <int> > var(rows);
-    vector <int>s;
+    vector<set<int>> clauses(rows);
+    int num;
     for(int i=0;i<rows;i++)
     {
-        inFile>>number;
-
-        while(number!=0)
+        inFile>>num;
+        while(num!=0)
         {
-            var[i].push_back(number);
-            inFile>>number;
-
-        }
-        var[i].push_back(number);
-    }
-
-    rmv(var,s);
-      
-    vector<vector<vector<int> > > p_var;
-    vector<int> count_stack;
-    int value = var[0][0];
-    vector<int> index;
-    index.push_back(0);
-    vector<int> length;
-    length.push_back(var[0].size());
-    int contradic=0;
-    s.push_back(value);
-    for(int i=0;i<var.size();i++)
-    {
-        if(var[i].size()==1)
-        {
-            contradic=1;
-            break;
+            clauses[i].insert(num);
+            inFile>>num;
         }
     }
-    int done=0;
-    if(var.size()==0)
-    {
-        done=1;
+    vector<int> assignment;
+    //Algorithm
+    unit_prop(clauses,assignment);
+    pure_literal_assign(clauses,assignment,literals);
+    if(clauses.size()==0){
+        print_ans(assignment,literals);
+        cout<<"SATISFIABLE"<<endl;
+        return 0;
     }
-    int sat=0;
-    if(contradic!=1 && done!=1){
-        if(rec(var,p_var,count_stack,value,0,s,index,length))
-        {
-            sat=1;
-            cout<<"SAT"<<endl;
-        }            
-        else
-        {
-            cout<<"UNSAT"<<endl;
-        }
+    if(check_empty_clause(clauses)==1){
+        cout<<"UNSATISFIABLE"<<endl;
+        return 0;
     }
-    else if(contradic==1 && done!=1)
-    {
-        cout<<"UNSAT"<<endl;
-    }
-    else
-    {
-        sat=1;
-        cout<<"SAT"<<endl;
-    }
-    //sort s vector
-    if(sat==1){
-      vector <int>arr;
-      for(int i3 =0;i3<variables;i3++)
-      {
-        arr.push_back(0);
-      }
-      for(int i3 = 0;i3<s.size();i3++)
-      {
-        if(s[i3]<0)
-        {
-          int num = -1*s[i3]-1;
-          arr[num] = 1;
-        }
-      }
-      for(int i3 =0;i3<variables;i3++)
-      {
-        if(arr[i3]==0)
-        {
-          cout<<i3+1<<" ";
-        }
-        else
-        {
-          cout<<"-"<<i3+1<<" ";
-        }
-      }
-      cout<<endl;
-    }
-
-
-
-
-    
-    
+    int  new_p = *(clauses[0].begin());
+    bool answer =  DPLL_algo(clauses, assignment,new_p, literals) || DPLL_algo(clauses,assignment,-1*new_p,literals);
+    if(answer)
+        cout<<"SATISFIABLE"<<endl;
+    else   
+        cout<<"UNSATISFIABLE"<<endl;
+    return 0;
 }
